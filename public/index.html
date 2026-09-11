@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>supabrowser</title>
+<style>
+:root{
+  --bg: #0b120d;
+  --panel: #131c15;
+  --panel-alt: #1a2a1d;
+  --border: #24382a;
+  --text: #e7f3ea;
+  --text-dim: #8fae97;
+  --accent: #34c759;
+  --accent-dim: #248a3d;
+  --accent-glow: rgba(52, 199, 89, 0.35);
+  --danger: #e35d5d;
+  --radius: 12px;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+#app{
+  height:100dvh; display:flex; flex-direction:column;
+}
+
+/* ---- chrome bar ---- */
+.chrome{
+  flex:0 0 auto; background:var(--panel); border-bottom:1px solid var(--border);
+  padding:.55rem .75rem; display:flex; align-items:center; gap:.5rem;
+}
+.navbtn{
+  width:34px; height:34px; border-radius:10px; border:1px solid var(--border);
+  background:var(--panel-alt); color:var(--text-dim); display:flex; align-items:center;
+  justify-content:center; cursor:pointer; flex:0 0 auto; transition:background .15s, color .15s;
+}
+.navbtn:hover{background:#22331f; color:var(--text);}
+.navbtn:disabled{opacity:.4; cursor:default;}
+.navbtn:disabled:hover{background:var(--panel-alt); color:var(--text-dim);}
+.navbtn svg{width:16px; height:16px;}
+
+.omnibox{
+  flex:1; display:flex; align-items:center; gap:.5rem;
+  background:var(--panel-alt); border:1px solid var(--border); border-radius:999px;
+  padding:.45rem .9rem; min-width:0;
+}
+.omnibox .lock{flex:0 0 auto; width:13px; height:13px; color:var(--accent);}
+.omnibox input{
+  flex:1; min-width:0; background:none; border:none; outline:none; color:var(--text);
+  font-size:.9rem; font-family:inherit;
+}
+.omnibox input::placeholder{color:var(--text-dim);}
+.go{
+  flex:0 0 auto; background:var(--accent); color:#06210f; border:none; border-radius:999px;
+  padding:.5rem 1.1rem; font-weight:600; font-size:.85rem; cursor:pointer;
+  box-shadow:0 0 0 rgba(0,0,0,0); transition:box-shadow .15s, background .15s;
+}
+.go:hover{background:#3fe066; box-shadow:0 0 14px var(--accent-glow);}
+
+.logo{
+  display:flex; align-items:center; gap:.4rem; flex:0 0 auto; padding-right:.25rem;
+  font-weight:700; letter-spacing:-.01em;
+}
+.logo .dot{
+  width:9px; height:9px; border-radius:50%; background:var(--accent);
+  box-shadow:0 0 8px var(--accent-glow);
+}
+
+/* ---- status strip ---- */
+.status{
+  flex:0 0 auto; padding:.3rem .9rem; font-size:.72rem; color:var(--text-dim);
+  background:var(--panel); border-bottom:1px solid var(--border);
+  display:flex; align-items:center; gap:.4rem; min-height:1.6rem;
+}
+.status .spin{
+  width:10px; height:10px; border-radius:50%; border:2px solid var(--border);
+  border-top-color:var(--accent); animation:spin .7s linear infinite; display:none;
+}
+.status.loading .spin{display:inline-block;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.status.error{color:var(--danger);}
+
+/* ---- stage ---- */
+.stage{flex:1; position:relative; background:var(--bg);}
+.stage iframe{
+  position:absolute; inset:0; width:100%; height:100%; border:none; background:#fff;
+}
+.homecard{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  flex-direction:column; gap:1.1rem; padding:2rem; text-align:center;
+}
+.homecard .mark{
+  display:flex; align-items:center; gap:.6rem; font-size:2rem; font-weight:800;
+  letter-spacing:-.02em;
+}
+.homecard .mark .dot{width:16px; height:16px; box-shadow:0 0 22px var(--accent-glow);}
+.homecard p{color:var(--text-dim); max-width:32ch; margin:0; line-height:1.5;}
+.homecard .try{
+  display:flex; gap:.5rem; flex-wrap:wrap; justify-content:center;
+}
+.chip{
+  background:var(--panel-alt); border:1px solid var(--border); color:var(--text-dim);
+  border-radius:999px; padding:.4rem .9rem; font-size:.8rem; cursor:pointer;
+}
+.chip:hover{color:var(--text); border-color:var(--accent);}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="chrome">
+    <div class="logo"><span class="dot"></span>supabrowser</div>
+    <button class="navbtn" id="back" title="Back" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <button class="navbtn" id="fwd" title="Forward" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+    </button>
+    <button class="navbtn" id="reload" title="Reload">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-3-6.7M21 3v6h-6"/></svg>
+    </button>
+    <div class="omnibox">
+      <svg class="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>
+      <input id="url" type="text" placeholder="Search or enter a website address" autocomplete="off" spellcheck="false">
+    </div>
+    <button class="go" id="go">Go</button>
+  </div>
+  <div class="status" id="status"><span class="spin"></span><span id="statusText">Ready</span></div>
+  <div class="stage" id="stage">
+    <div class="homecard" id="home">
+      <div class="mark"><span class="dot"></span>supabrowser</div>
+      <p>Type a web address or a search above. Pages load through supabrowser's own proxy, so they open right here.</p>
+      <div class="try">
+        <button class="chip" data-url="https://example.com">example.com</button>
+        <button class="chip" data-url="https://en.wikipedia.org/wiki/Web_browser">wikipedia.org</button>
+        <button class="chip" data-url="https://news.ycombinator.com">news.ycombinator.com</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+const urlInput = document.getElementById('url');
+const goBtn = document.getElementById('go');
+const backBtn = document.getElementById('back');
+const fwdBtn = document.getElementById('fwd');
+const reloadBtn = document.getElementById('reload');
+const stage = document.getElementById('stage');
+const home = document.getElementById('home');
+const statusEl = document.getElementById('status');
+const statusText = document.getElementById('statusText');
+
+let history = [];
+let historyIndex = -1;
+let iframe = null;
+
+function setStatus(text, kind){
+  statusText.textContent = text;
+  statusEl.className = 'status' + (kind ? ' ' + kind : '');
+}
+
+function normalize(input){
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (/^[\w-]+(\.[\w-]+)+.*$/.test(trimmed) && !trimmed.includes(' ')) return 'https://' + trimmed;
+  return 'https://duckduckgo.com/html/?q=' + encodeURIComponent(trimmed);
+}
+
+function ensureIframe(){
+  if (iframe) return iframe;
+  home.remove();
+  iframe = document.createElement('iframe');
+  iframe.setAttribute('sandbox', 'allow-scripts allow-forms allow-popups allow-same-origin allow-modals');
+  stage.appendChild(iframe);
+  return iframe;
+}
+
+function load(target, pushHistory){
+  const url = normalize(target);
+  if (!url) return;
+  urlInput.value = url;
+  setStatus('Loading ' + url + ' …', 'loading');
+
+  const frame = ensureIframe();
+  frame.src = '/fetch?url=' + encodeURIComponent(url);
+
+  if (pushHistory !== false) {
+    history = history.slice(0, historyIndex + 1);
+    history.push(url);
+    historyIndex = history.length - 1;
+  }
+  updateNav();
+}
+
+function updateNav(){
+  backBtn.disabled = historyIndex <= 0;
+  fwdBtn.disabled = historyIndex >= history.length - 1;
+}
+
+goBtn.addEventListener('click', () => load(urlInput.value));
+urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') load(urlInput.value); });
+
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', () => load(chip.dataset.url));
+});
+
+backBtn.addEventListener('click', () => {
+  if (historyIndex > 0) { historyIndex--; load(history[historyIndex], false); }
+});
+fwdBtn.addEventListener('click', () => {
+  if (historyIndex < history.length - 1) { historyIndex++; load(history[historyIndex], false); }
+});
+reloadBtn.addEventListener('click', () => {
+  if (history[historyIndex]) load(history[historyIndex], false);
+});
+
+window.addEventListener('message', e => {
+  if (!e.data || e.data.source !== 'supabrowser') return;
+  if (e.data.type === 'title') {
+    setStatus('Loaded ' + e.data.url, '');
+    if (e.data.title) document.title = e.data.title + ' — supabrowser';
+  }
+});
+
+if (iframe) {
+  iframe.addEventListener('load', () => setStatus('Ready', ''));
+}
+</script>
+</body>
+</html>
