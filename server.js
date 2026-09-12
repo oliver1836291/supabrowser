@@ -90,7 +90,7 @@ function rewriteHtml(html, baseUrl) {
   return out;
 }
 
-app.get('/fetch', async (req, res) => {
+async function handleFetch(req, res) {
   const target = req.query.url;
   if (!target) return res.status(400).send('Missing url parameter');
 
@@ -104,12 +104,17 @@ app.get('/fetch', async (req, res) => {
 
   try {
     const upstream = await fetch(parsed.toString(), {
+      method: req.method,
       redirect: 'follow',
       headers: {
         'User-Agent': req.get('user-agent') || 'Mozilla/5.0 (compatible; Supabrowser/1.0)',
         'Accept': req.get('accept') || '*/*',
         'Accept-Language': req.get('accept-language') || 'en-US,en;q=0.9',
+        ...(req.method === 'POST' && req.get('content-type')
+          ? { 'Content-Type': req.get('content-type') }
+          : {}),
       },
+      body: req.method === 'POST' ? req.body : undefined,
     });
 
     const finalUrl = upstream.url || parsed.toString();
@@ -140,7 +145,10 @@ app.get('/fetch', async (req, res) => {
   } catch (err) {
     res.status(502).send('Failed to load page: ' + err.message);
   }
-});
+}
+
+app.get('/fetch', handleFetch);
+app.post('/fetch', express.raw({ type: '*/*', limit: '20mb' }), handleFetch);
 
 app.listen(PORT, () => {
   console.log(`supabrowser running at http://localhost:${PORT}`);
