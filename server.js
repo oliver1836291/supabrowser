@@ -29,12 +29,22 @@ function resolve(base, ref) {
   catch (e) { return null; }
 }
 
+function decodeEntities(str) {
+  return str
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;/g, "'");
+}
+
 function rewriteHtml(html, baseUrl) {
   let out = html;
 
   for (const attr of REWRITE_ATTRS) {
     const re = new RegExp('(' + attr + '\\s*=\\s*)(["\'])(.*?)\\2', 'gi');
-    out = out.replace(re, (m, pre, quote, val) => {
+    out = out.replace(re, (m, pre, quote, rawVal) => {
+      const val = decodeEntities(rawVal);
       if (/^(javascript:|data:|mailto:|tel:|#)/i.test(val.trim())) return m;
       const abs = resolve(baseUrl, val);
       if (!abs) return m;
@@ -42,7 +52,8 @@ function rewriteHtml(html, baseUrl) {
     });
   }
 
-  out = out.replace(/(srcset\s*=\s*)(["\'])(.*?)\2/gi, (m, pre, quote, val) => {
+  out = out.replace(/(srcset\s*=\s*)(["\'])(.*?)\2/gi, (m, pre, quote, rawVal) => {
+    const val = decodeEntities(rawVal);
     const rewritten = val.split(',').map(part => {
       const seg = part.trim().split(/\s+/);
       const abs = resolve(baseUrl, seg[0]);
